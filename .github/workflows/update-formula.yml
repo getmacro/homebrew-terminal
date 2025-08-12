@@ -1,0 +1,129 @@
+name: Update Formula from Terminal Release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * *"
+  repository_dispatch:
+    types: [terminal-release]
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Get latest stable release
+        id: get_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the latest non-prerelease
+            const { data: release } = await github.rest.repos.getLatestRelease({
+              owner: 'getmacro',
+              repo: 'terminal'
+            });
+
+            // Skip if it's a pre-release
+            if (release.prerelease || release.tag_name.includes('-rc')) {
+              // Get all releases and find the latest stable one
+              const { data: releases } = await github.rest.repos.listReleases({
+                owner: 'getmacro',
+                repo: 'terminal',
+                per_page: 20
+              });
+
+              const stableRelease = releases.find(r => !r.prerelease && !r.tag_name.includes('-'));
+              if (!stableRelease) {
+                throw new Error('No stable release found');
+              }
+              release = stableRelease;
+            }
+
+            // Extract version without 'v' prefix
+            const version = release.tag_name.replace(/^v/, '');
+
+            // Find checksums.txt in release assets
+            const checksumsAsset = release.assets.find(asset => asset.name === 'checksums.txt');
+            if (!checksumsAsset) {
+              throw new Error('checksums.txt not found in release assets');
+            }
+
+            core.setOutput('version', version);
+            core.setOutput('checksums_url', checksumsAsset.browser_download_url);
+            core.setOutput('release_url', release.html_url);
+            core.setOutput('tag_name', release.tag_name);
+
+      - name: Check if update needed
+        id: check_update
+        run: |
+          if [ -f "Formula/macro.rb" ]; then
+            CURRENT_VERSION=$(grep 'version "' Formula/macro.rb | sed 's/.*version "\(.*\)"/\1/')
+            NEW_VERSION="${{ steps.get_release.outputs.version }}"
+
+            if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+              echo "Formula already up to date"
+              echo "needs_update=false" >> $GITHUB_OUTPUT
+            else
+              echo "Update needed: $CURRENT_VERSION -> $NEW_VERSION"
+              echo "needs_update=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Formula doesn't exist yet, creating new"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate formula from template
+        if: steps.check_update.outputs.needs_update == 'true'
+        run: |
+          # Download checksums to a temporary file
+          curl -sSL "${{ steps.get_release.outputs.checksums_url }}" -o /tmp/checksums.txt
+
+          # Extract SHA256 values for each platform
+          ARM64_MACOS_SHA=$(grep "macro-aarch64-apple-darwin.tar.gz" /tmp/checksums.txt | cut -d' ' -f1)
+          X86_64_MACOS_SHA=$(grep "macro-x86_64-apple-darwin.tar.gz" /tmp/checksums.txt | cut -d' ' -f1)
+          ARM64_LINUX_SHA=$(grep "macro-aarch64-linux-gnu.tar.gz" /tmp/checksums.txt | cut -d' ' -f1)
+          X86_64_LINUX_SHA=$(grep "macro-x86_64-linux-gnu.tar.gz" /tmp/checksums.txt | cut -d' ' -f1)
+
+          # Generate formula from template
+          sed -e "s/{{CLASS_NAME}}/Macro/g" \
+              -e "s/{{DESCRIPTION}}/Macro Terminal/g" \
+              -e "s/{{VERSION}}/${{ steps.get_release.outputs.version }}/g" \
+              -e "s/{{ARM64_MACOS_SHA256}}/$ARM64_MACOS_SHA/g" \
+              -e "s/{{X86_64_MACOS_SHA256}}/$X86_64_MACOS_SHA/g" \
+              -e "s/{{ARM64_LINUX_SHA256}}/$ARM64_LINUX_SHA/g" \
+              -e "s/{{X86_64_LINUX_SHA256}}/$X86_64_LINUX_SHA/g" \
+              templates/macro.rb.template > Formula/macro.rb
+
+          echo "Generated Formula/macro.rb for version ${{ steps.get_release.outputs.version }}"
+
+          # Clean up temporary file
+          rm -f /tmp/checksums.txt
+
+      - name: Create Pull Request
+        if: steps.check_update.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.HOMEBREW_BOT_TOKEN }}
+          commit-message: "Update macro to ${{ steps.get_release.outputs.version }}"
+          branch: "update-macro-${{ steps.get_release.outputs.version }}"
+          delete-branch: true
+          title: "Update macro to ${{ steps.get_release.outputs.version }}"
+          body: |
+            Automated update from terminal release ${{ steps.get_release.outputs.tag_name }}
+
+            ### Changes
+            - Updated macro formula to version `${{ steps.get_release.outputs.version }}`
+
+            ### Source
+            This update was generated from the formula template using checksums from the release.
+
+            ### Release Notes
+            ${{ steps.get_release.outputs.release_url }}
+
+            ---
+            *This PR was automatically created by the update workflow.*
+          labels: |
+            automated
+            formula-update
