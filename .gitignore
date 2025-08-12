@@ -1,0 +1,5 @@
+# Temporary files
+checksums.txt
+
+# macOS
+.DS_Store
