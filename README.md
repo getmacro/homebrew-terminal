@@ -4,19 +4,7 @@ Official Homebrew tap for [Macro Terminal](https://github.com/getmacro/terminal)
 
 ## Installation
 
-```bash
-brew install getmacro/terminal/macro
-```
-
-## About Macro Terminal
-
-Macro Terminal operates autonomously in your terminal—exploring projects, querying databases, running commands, and building understanding of your codebase and data through natural language conversations.
-
-After installation, authenticate with Macro Platform:
-
-```bash
-macro login
-```
+See the [macOS installation guide](https://getmacro.com/docs/terminal/macos) for complete setup instructions.
 
 ## Documentation
 
