@@ -1,28 +1,28 @@
 class Macro < Formula
   desc "Macro Terminal"
   homepage "https://github.com/getmacro/terminal"
-  version "0.4.0"
+  version "0.5.1"
   license "MIT"
 
   depends_on "unixodbc" => :optional
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/getmacro/terminal/releases/download/v0.4.0/macro-aarch64-apple-darwin.tar.gz"
-      sha256 "07c37d4ee12ed2d2020cadf19144feb2caf919064a5fa3382b327658af791a5e"
+      url "https://github.com/getmacro/terminal/releases/download/v0.5.1/macro-aarch64-apple-darwin.tar.gz"
+      sha256 "19820bde447e1a0240880a2b7de64584cb3d640accfe8bf70b2fb4641ea953ab"
     else
-      url "https://github.com/getmacro/terminal/releases/download/v0.4.0/macro-x86_64-apple-darwin.tar.gz"
-      sha256 "9f22ad974094697719ff920622590c58fd25351e33eb324d5203b06c348a3918"
+      url "https://github.com/getmacro/terminal/releases/download/v0.5.1/macro-x86_64-apple-darwin.tar.gz"
+      sha256 "9a1dd3e1f6d3a2786b38ae595254890adadc24fec533e5bbfb7d35ff563ac5a7"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/getmacro/terminal/releases/download/v0.4.0/macro-aarch64-linux-gnu.tar.gz"
-      sha256 "d9283aa717f1dcade6a635814f3102bdd43f8ec53e7f3605de09204265768ea2"
+      url "https://github.com/getmacro/terminal/releases/download/v0.5.1/macro-aarch64-linux-gnu.tar.gz"
+      sha256 "e35525701b478f8b346e329ba56f820a00efb1afbbb2df110cf59278852f4b6d"
     else
-      url "https://github.com/getmacro/terminal/releases/download/v0.4.0/macro-x86_64-linux-gnu.tar.gz"
-      sha256 "deeaa412ed5628415fed9ea316c1cf6aa47a987133c23d5d67bb3bb1b36c80c0"
+      url "https://github.com/getmacro/terminal/releases/download/v0.5.1/macro-x86_64-linux-gnu.tar.gz"
+      sha256 "aa546c847503a648fca4be5750fb86d9c670897d4c5405540ee81a35ee66d2a0"
     end
   end
 
